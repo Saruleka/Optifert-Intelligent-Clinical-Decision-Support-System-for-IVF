@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - OptiFert Clinic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="auth-container">
+    <div class="auth-info">
+        <div class="auth-info-content">
+            <h2>OptiFert Clinic</h2>
+            <p>The AI-Assisted clinical decision support system designed specifically for modern IVF workflows.</p>
+        </div>
+    </div>
+    <div class="auth-form-wrapper">
+        <div class="auth-form-content">
+            <h3>Create an Account</h3>
+            <p class="subtitle">Join our platform to manage your IVF journey efficiently.</p>
+            
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+            </div>
+
+            <form action="{{ url_for('register') }}" method="POST">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Jane Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" required autocapitalize="none">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Create a secure password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Account Type</label>
+                    <select id="role" name="role" class="form-control" onchange="toggleDoctorCode()">
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="doctor-code-group" style="display: none;">
+                    <label for="doctor_code">Doctor Access Code</label>
+                    <input type="password" id="doctor_code" name="doctor_code" class="form-control" placeholder="Enter clinical access code">
+                </div>
+
+                <button type="submit" class="btn-primary">Register Account</button>
+            </form>
+            
+            <div class="auth-links">
+                Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleDoctorCode() {
+        const role = document.getElementById('role').value;
+        const codeGroup = document.getElementById('doctor-code-group');
+        const codeInput = document.getElementById('doctor_code');
+        
+        if (role === 'doctor') {
+            codeGroup.style.display = 'block';
+            codeInput.required = true;
+        } else {
+            codeGroup.style.display = 'none';
+            codeInput.required = false;
+            codeInput.value = '';
+        }
+    }
+</script>
+</body>
+</html>

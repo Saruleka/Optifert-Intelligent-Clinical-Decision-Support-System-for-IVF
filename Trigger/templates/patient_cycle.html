@@ -1,0 +1,96 @@
+{% extends "patient_base.html" %}
+{% block title %}My Cycle Progress{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="dashboard-header flex-header" style="margin-bottom: 2rem;">
+    <div>
+        <h1 style="margin-top: 0.5rem;">My Cycle Progress</h1>
+        <p>Track your health metrics across monitoring visits.</p>
+    </div>
+</div>
+
+{% if not has_data %}
+<div class="panel">
+    <div class="panel-body text-center" style="padding: 3rem; display: flex; flex-direction: column; align-items: center;">
+        <i data-feather="activity" style="width: 48px; height: 48px; color: #94a3b8; margin-bottom: 1rem;"></i>
+        <h3 style="color: #1e293b; margin-bottom: 0.5rem;">No Cycle Data Yet</h3>
+        <p style="color: #64748b;">Your doctor will update your cycle after each visit.</p>
+    </div>
+</div>
+{% else %}
+<div style="max-width: 600px; margin: 0 auto 2rem auto;">
+    <div class="panel" style="border-top: 4px solid {% if status_color == 'success' %}#16a34a{% elif status_color == 'warning' %}#f59e0b{% else %}#dc2626{% endif %};">
+        <div class="panel-body" style="padding: 1.5rem; text-align: center;">
+            <h3 style="margin-top: 0; color: #1e293b;">Cycle Status</h3>
+            <div style="display: inline-block; padding: 0.5rem 1.5rem; border-radius: 20px; font-weight: bold; background-color: {% if status_color == 'success' %}#dcfce7; color: #16a34a{% elif status_color == 'warning' %}#fef3c7; color: #d97706{% else %}#fee2e2; color: #dc2626{% endif %}; margin: 0.5rem 0;">
+                {% if safe_status == 'On Track' %} 🟢 {% elif safe_status == 'Needs Monitoring' %} 🟡 {% else %} 🟠 {% endif %}
+                {{ safe_status }}
+            </div>
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0;">Your doctor is monitoring your progress closely.</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>Clinical Metrics</h2>
+    </div>
+    <div class="panel-body no-padding" style="padding: 1.5rem !important;">
+        <div class="charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; max-width: 800px; margin: 0 auto;">
+            <div class="chart-box" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">
+                <canvas id="patE2Chart"></canvas>
+            </div>
+            <div class="chart-box" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">
+                <canvas id="patFollChart"></canvas>
+            </div>
+        </div>
+        <p style="text-align: center; color: #94a3b8; font-size: 0.8rem; margin-top: 1.5rem; margin-bottom: 0;">Data updated by your doctor after each monitoring visit.</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor = rootStyles.getPropertyValue('--primary-color').trim() || '#0284c7';
+    const successColor = rootStyles.getPropertyValue('--success-color').trim() || '#16a34a';
+    
+    const rawData = {{ data | tojson }};
+    
+    // E2 Trend
+    new Chart(document.getElementById('patE2Chart'), {
+        type: 'line',
+        data: {
+            labels: rawData.dates,
+            datasets: [{
+                label: 'Estradiol (E2)',
+                data: rawData.e2,
+                borderColor: primaryColor,
+                backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true, plugins: { title: { display: true, text: 'Hormonal Response Trend' } } }
+    });
+    
+    // Follicles
+    new Chart(document.getElementById('patFollChart'), {
+        type: 'bar',
+        data: {
+            labels: rawData.dates,
+            datasets: [
+                { label: 'Developing Follicles (12mm+)', data: rawData.f12, backgroundColor: '#94a3b8' },
+                { label: 'Optimal Follicles (18mm+)', data: rawData.f18, backgroundColor: successColor }
+            ]
+        },
+        options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { title: { display: true, text: 'Follicular Growth Progression' } } }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

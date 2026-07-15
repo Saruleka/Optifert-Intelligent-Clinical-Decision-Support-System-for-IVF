@@ -1,0 +1,158 @@
+{% extends "doctor_base.html" %}
+{% block title %}Patient History - {{ patient.name }}{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="dashboard-header flex-header" style="margin-bottom: 2rem;">
+    <div>
+        <a href="{{ url_for('doctor_patients') }}" class="back-link"><i data-feather="arrow-left" style="width: 16px; height: 16px;"></i> Back to Patients</a>
+        <h1 style="margin-top: 0.5rem;">{{ patient.name }}</h1>
+        <p>Email: {{ patient.email }}</p>
+    </div>
+</div>
+
+<div class="patient-nav" style="margin-bottom: 2rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 2rem;">
+    <a href="{{ url_for('doctor_patient_profile', patient_id=patient.id) }}" class="nav-tab" style="padding-bottom: 0.5rem; border-bottom: 2px solid transparent; color: #64748b; text-decoration: none;">AI Predictor</a>
+    <a href="{{ url_for('doctor_patient_profile_edit', patient_id=patient.id) }}" class="nav-tab" style="padding-bottom: 0.5rem; border-bottom: 2px solid transparent; color: #64748b; text-decoration: none;">Edit Base Profile</a>
+    <a href="{{ url_for('doctor_patient_history', patient_id=patient.id) }}" class="nav-tab active" style="padding-bottom: 0.5rem; border-bottom: 2px solid #0284c7; color: #0284c7; font-weight: 600; text-decoration: none;">Cycle History</a>
+</div>
+
+<div style="margin-bottom: 1rem;">
+    <h2 style="margin: 0; color: #1e293b;">Cycle Monitoring Timeline</h2>
+    <p style="color: #64748b; font-size: 0.9rem; margin-top: 0.25rem;">Cycle progression is tracked across visits to support clinical decisions.</p>
+</div>
+
+{% if not cycles %}
+<div class="empty-state" style="padding: 4rem; text-align: center; border: 1px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
+    <i data-feather="bar-chart-2" style="width: 48px; height: 48px; color: #94a3b8; margin-bottom: 1rem;"></i>
+    <h3 style="color: #1e293b; margin-bottom: 0.5rem;">No cycle data available yet.</h3>
+    <p style="color: #64748b;">Once predictions are run, the progression charts will appear here.</p>
+</div>
+{% else %}
+<div class="panel" style="margin-bottom: 1.5rem;" id="analytics-panel">
+    <div class="panel-header">
+        <h2>Cycle Analytics</h2>
+    </div>
+    <div class="panel-body no-padding" style="padding: 1.5rem !important;">
+        <div class="charts-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="chart-box" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">
+                <canvas id="e2Chart"></canvas>
+            </div>
+            <div class="chart-box" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">
+                <canvas id="follChart"></canvas>
+            </div>
+            <div class="chart-box" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; grid-column: span 2;">
+                <canvas id="miiChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel" style="margin-top: 1.5rem;">
+    <div class="panel-header">
+        <h2>Cycle History Details</h2>
+    </div>
+    <div class="panel-body no-padding">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Cycle Day</th>
+                        <th>E2</th>
+                        <th>F14+ Estimate</th>
+                        <th>F18+</th>
+                        <th>Trigger Decision</th>
+                        <th>OHSS Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cycles %}
+                    <tr>
+                        <td>{{ c.created_at[:10] }}</td>
+                        <td>{{ c.stim_days }}</td>
+                        <td>{{ c.e2 }}</td>
+                        <td>{{ c.f12 + c.f18 + c.f22 }}</td>
+                        <td>{{ c.f18 + c.f22 }}</td>
+                        <td><strong>{{ c.predicted_trigger }}</strong></td>
+                        <td>
+                            <span class="badge status-{{ 'scheduled' if c.ohss_risk|lower == 'low' else 'danger' }}" style="{{ 'background-color: #fef2f2; color: #dc2626;' if c.ohss_risk|lower != 'low' else '' }}">{{ c.ohss_risk }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor = rootStyles.getPropertyValue('--primary-color').trim() || '#0284c7';
+    const successColor = rootStyles.getPropertyValue('--success-color').trim() || '#16a34a';
+    const warningColor = '#f59e0b';
+    
+    // Uses the EXACT DRY source function implemented in Phase 6 / Phase 7 updates
+    fetch('{{ url_for("get_cycle_data", patient_id=patient.id) }}')
+        .then(res => res.json())
+        .then(data => {
+            if(!data.success || data.data.dates.length === 0) {
+                document.getElementById('analytics-panel').style.display = 'none';
+                return;
+            }
+            
+            const cData = data.data;
+            
+            // E2 Trend
+            new Chart(document.getElementById('e2Chart'), {
+                type: 'line',
+                data: {
+                    labels: cData.dates,
+                    datasets: [{
+                        label: 'Estradiol (E2)',
+                        data: cData.e2,
+                        borderColor: primaryColor,
+                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Estradiol Trend' } } }
+            });
+            
+            // Follicles
+            new Chart(document.getElementById('follChart'), {
+                type: 'bar',
+                data: {
+                    labels: cData.dates,
+                    datasets: [
+                        { label: 'F12 Count', data: cData.f12, backgroundColor: '#94a3b8' },
+                        { label: 'F18 Count', data: cData.f18, backgroundColor: successColor }
+                    ]
+                },
+                options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { title: { display: true, text: 'Follicle Composition Progression' } } }
+            });
+
+            // MII
+            new Chart(document.getElementById('miiChart'), {
+                type: 'line',
+                data: {
+                    labels: cData.dates,
+                    datasets: [{
+                        label: 'Est. MII',
+                        data: cData.mii,
+                        borderColor: warningColor,
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Predicted MII Yield Across Visits' } } }
+            });
+        });
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Doctor Dashboard{% endblock %} - OptiFert</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="dashboard-body">
+
+<div class="sidebar collapsed" id="sidebar">
+    <div class="sidebar-header">
+        <h2>OptiFert</h2>
+        <button class="menu-toggle" onclick="toggleSidebar()">
+            <i data-feather="menu"></i>
+        </button>
+    </div>
+    
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('doctor_dashboard') }}" class="nav-item {% if request.endpoint == 'doctor_dashboard' %}active{% endif %}">
+            <i data-feather="grid"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('doctor_patients') }}" class="nav-item {% if request.endpoint == 'doctor_patients' %}active{% endif %}">
+            <i data-feather="users"></i>
+            <span>Patients</span>
+        </a>
+        <a href="{{ url_for('doctor_appointments') }}" class="nav-item {% if request.endpoint == 'doctor_appointments' %}active{% endif %}">
+            <i data-feather="calendar"></i>
+            <span>Appointments</span>
+        </a>
+        <a href="{{ url_for('doctor_alerts') }}" class="nav-item {% if request.endpoint == 'doctor_alerts' %}active{% endif %}">
+            <i data-feather="bell"></i>
+            <span>Alerts</span>
+        </a>
+        <div class="nav-divider"></div>
+        
+        <a href="{{ url_for('logout') }}" class="nav-item danger">
+            <i data-feather="log-out"></i>
+            <span>Logout</span>
+        </a>
+    </nav>
+</div>
+
+<div class="main-content" id="main-content">
+    <header class="topbar">
+        <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+            <i data-feather="menu"></i>
+        </button>
+        <div class="user-greeting">
+            <div class="user-avatar">
+                {{ session.get('name', 'D')[0:1].upper() }}
+            </div>
+            <div class="greeting-text">
+                <span>Welcome back,</span>
+                <strong>{{ session.get('name', 'Doctor') }}</strong>
+            </div>
+        </div>
+    </header>
+    
+    <div class="flash-messages-dash">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+
+    <main class="page-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+    feather.replace();
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        // If mobile, toggle expanded
+        if(window.innerWidth <= 900) {
+            document.getElementById('sidebar').classList.toggle('expanded');
+        }
+    }
+</script>
+</body>
+</html>

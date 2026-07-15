@@ -1,0 +1,522 @@
+{% extends "doctor_base.html" %}
+{% block title %}Patient Profile - {{ patient.name }}{% endblock %}
+
+{% block content %}
+<style>
+.btn-simulate {
+    width: 100%;
+    border: 1px solid #c7d2fe;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    color: #4f46e5;
+    font-weight: 600;
+    padding: 0.85rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1), 0 2px 4px -1px rgba(99, 102, 241, 0.06);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+.btn-simulate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 12px -1px rgba(99, 102, 241, 0.15), 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    color: #4338ca;
+}
+.btn-simulate:active {
+    transform: translateY(0);
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="dashboard-header flex-header" style="margin-bottom: 1rem;">
+    <div>
+        <a href="{{ url_for('doctor_patients') }}" class="back-link"><i data-feather="arrow-left" style="width: 16px; height: 16px;"></i> Back to Patients</a>
+        <h1 style="margin-top: 0.5rem;">{{ patient.name }}</h1>
+        <p>Email: {{ patient.email }}</p>
+    </div>
+</div>
+
+<div class="patient-nav" style="margin-bottom: 2rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 2rem;">
+    <a href="{{ url_for('doctor_patient_profile', patient_id=patient.id) }}" class="nav-tab active" style="padding-bottom: 0.5rem; border-bottom: 2px solid #0284c7; color: #0284c7; font-weight: 600; text-decoration: none;">AI Predictor</a>
+    <a href="{{ url_for('doctor_patient_profile_edit', patient_id=patient.id) }}" class="nav-tab" style="padding-bottom: 0.5rem; border-bottom: 2px solid transparent; color: #64748b; text-decoration: none;">Edit Base Profile</a>
+    <a href="{{ url_for('doctor_patient_history', patient_id=patient.id) }}" class="nav-tab" style="padding-bottom: 0.5rem; border-bottom: 2px solid transparent; color: #64748b; text-decoration: none;">Cycle History</a>
+</div>
+
+{% if not patient.age or not patient.bmi or not patient.amh or patient.afc is none %}
+<div class="alert alert-warning" style="margin-bottom: 1.5rem; border-left: 4px solid #f59e0b;">
+    <strong>Warning:</strong> Please update patient baseline profile before running prediction. Simulation and prediction require complete baseline data.
+</div>
+{% endif %}
+
+<div class="profile-grid">
+    <!-- Left: Clinical Input Form -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Clinical Stimulation Input</h2>
+        </div>
+        <div class="panel-body">
+            <form id="predictionForm">
+                <input type="hidden" id="patient_id" value="{{ patient.id }}">
+                
+                <h3 class="form-section-title" style="margin-top: 0;">Patient Baseline</h3>
+                <div class="form-grid">
+                    <div class="form-group"><label>Age</label><input type="number" step="0.1" id="age" value="{{ patient.age or '' }}" class="form-control" style="background-color: #f1f5f9; cursor: not-allowed;" title="Auto-filled from patient profile" readonly required></div>
+                    <div class="form-group"><label>BMI</label><input type="number" step="0.1" id="bmi" value="{{ patient.bmi or '' }}" class="form-control" style="background-color: #f1f5f9; cursor: not-allowed;" title="Auto-filled from patient profile" readonly required></div>
+                    <div class="form-group"><label>AMH (ng/mL)</label><input type="number" step="0.1" id="amh" value="{{ patient.amh or '' }}" class="form-control" style="background-color: #f1f5f9; cursor: not-allowed;" title="Auto-filled from patient profile" readonly required></div>
+                    <div class="form-group"><label>AFC</label><input type="number" id="afc" value="{{ patient.afc if patient.afc is not none else '' }}" class="form-control" style="background-color: #f1f5f9; cursor: not-allowed;" title="Auto-filled from patient profile" readonly required></div>
+                </div>
+
+                <h3 class="form-section-title">Stimulation Protocol</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Protocol</label>
+                        <select id="protocol" class="form-control" required>
+                            <option value="">Select...</option>
+                            <option value="antagonist">Antagonist</option>
+                            <option value="agonist">Agonist</option>
+                            <option value="flare">Flare</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Gonadotropin Dose</label><input type="number" id="gon" class="form-control" required></div>
+                    <div class="form-group"><label>Stimulation Days</label><input type="number" id="stim_days" class="form-control" required></div>
+                </div>
+
+                <h3 class="form-section-title">Follicle Cohort</h3>
+                <div class="form-grid">
+                    <div class="form-group"><label>F12 Count</label><input type="number" id="f12" class="form-control" required></div>
+                    <div class="form-group"><label>F18 Count (Optimal)</label><input type="number" id="f18" class="form-control" required></div>
+                    <div class="form-group"><label>F22 Count (Over)</label><input type="number" id="f22" class="form-control" required></div>
+                    <div class="form-group"><label>Lead Follicle Size</label><input type="number" step="0.1" id="lead_follicle" class="form-control" required></div>
+                </div>
+
+                <h3 class="form-section-title">Hormonal Profile</h3>
+                <div class="form-grid">
+                    <div class="form-group"><label>E2 (Current)</label><input type="number" step="0.1" id="e2" class="form-control" required></div>
+                    <div class="form-group"><label>E2 (Previous)</label><input type="number" step="0.1" id="e2_prev" class="form-control" required></div>
+                    <div class="form-group"><label>LH</label><input type="number" step="0.1" id="lh" class="form-control" required></div>
+                    <div class="form-group"><label>Growth (mm/day)</label><input type="number" step="0.1" id="growth" class="form-control" required></div>
+                </div>
+
+                <div id="form-error" class="alert alert-danger" style="display:none; margin-top: 1rem;"></div>
+                
+                <button type="submit" class="btn-primary" id="predictBtn" style="margin-top:2rem;">
+                    Run AI Simulation
+                </button>
+            </form>
+
+            <hr style="margin: 2rem 0; border: 0; border-top: 1px solid #e5e7eb;">
+            
+            <div>
+                <button type="button" class="btn btn-simulate" id="toggleSimBtn">🔬 Simulate Next Visit</button>
+                
+                <div id="simPanel" style="display: none; margin-top: 1rem; padding: 1.5rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: #1e293b;">What-If Simulation</h4>
+                    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Adjust key parameters to preview potential clinical changes.</p>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Simulated E2</label><input type="number" step="0.1" id="sim_e2" class="form-control" placeholder="e.g. 1200"></div>
+                        <div class="form-group"><label>Simulated F18</label><input type="number" id="sim_f18" class="form-control" placeholder="e.g. 5"></div>
+                    </div>
+                    <div id="sim-error" class="alert alert-danger" style="display:none; margin-top: 0.5rem; padding: 0.5rem; font-size: 0.85rem;"></div>
+                    <button type="button" id="runSimBtn" class="btn-primary" style="margin-top: 1rem; width: 100%; background-color: #6366f1; border-color: #6366f1;">Run Simulation</button>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: AI Results -->
+    <div class="panel" style="background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border: 2px solid #e0f2fe; height: fit-content; position: sticky; top: 90px;">
+        <div class="panel-header" style="background-color: white;">
+            <h2>Clinical Decision Support</h2>
+        </div>
+        <div class="panel-body" id="resultsPanel">
+            <div class="empty-state" id="emptyResults">
+                <i data-feather="cpu" style="width: 48px; height: 48px; color: #94a3b8; margin-bottom: 1rem;"></i>
+                <h3 style="color: var(--text-main);">No Simulation Run</h3>
+                <p>Fill out the clinical form and click Run AI Simulation.</p>
+            </div>
+            
+            <div id="loadedResults" style="display: none;">
+                <div class="result-highlight">
+                    <h4>Recommended Trigger</h4>
+                    <div class="trigger-badge" id="resTrigger">Optimal</div>
+                    <div class="confidence-bar">
+                        <div class="conf-fill" id="resConfBar" style="width: 0%;"></div>
+                    </div>
+                    <p class="conf-text">Confidence: <span id="resConfText" style="color: var(--primary-color);">0%</span></p>
+                </div>
+                
+                <div class="mini-stats-grid">
+                    <div class="mini-stat">
+                        <span>OHSS Risk</span>
+                        <strong id="resOhss">Low</strong>
+                    </div>
+                    <div class="mini-stat">
+                        <span>Est. MII Oocytes</span>
+                        <strong id="resMii">0</strong>
+                    </div>
+                </div>
+                
+                <div class="explainability-block">
+                    <h4>Clinical Explainability</h4>
+                    <div id="resExplain">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                
+                <div class="explainability-block" style="margin-top: 1rem;">
+                    <h4>Alternative Decisions (Why Not?)</h4>
+                    <div id="resWhyNot">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                
+                <p id="safetyDisclaimer" style="font-size: 0.8rem; color: #94a3b8; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; text-align: center; display: none;">This is a simulated outcome based on hypothetical inputs and does not replace clinical judgment.</p>
+            </div>
+        </div>
+    </div>
+                <p id="safetyDisclaimer" style="font-size: 0.8rem; color: #94a3b8; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; text-align: center; display: none;">This is a simulated outcome based on hypothetical inputs and does not replace clinical judgment.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('predictionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('predictBtn');
+    btn.innerText = 'Simulating...';
+    btn.disabled = true;
+    document.getElementById('form-error').style.display = 'none';
+    
+    const data = {
+        patient_id: document.getElementById('patient_id').value,
+        age: document.getElementById('age').value,
+        bmi: document.getElementById('bmi').value,
+        amh: document.getElementById('amh').value,
+        afc: document.getElementById('afc').value,
+        protocol: document.getElementById('protocol').value,
+        gon: document.getElementById('gon').value,
+        stim_days: document.getElementById('stim_days').value,
+        f12: document.getElementById('f12').value,
+        f18: document.getElementById('f18').value,
+        f22: document.getElementById('f22').value,
+        lead_follicle: document.getElementById('lead_follicle').value,
+        e2: document.getElementById('e2').value,
+        e2_prev: document.getElementById('e2_prev').value,
+        lh: document.getElementById('lh').value,
+        growth: document.getElementById('growth').value
+    };
+    
+    fetch('{{ url_for("predict") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.innerText = 'Run AI Simulation';
+        btn.disabled = false;
+        
+        if (!data.success) {
+            document.getElementById('form-error').innerText = data.error;
+            document.getElementById('form-error').style.display = 'block';
+            return;
+        }
+        
+        // Show results
+        document.getElementById('emptyResults').style.display = 'none';
+        document.getElementById('loadedResults').style.display = 'block';
+        
+        const res = data.results;
+        document.getElementById('resTrigger').innerText = res.trigger;
+        
+        // Timeout for animation
+        setTimeout(() => {
+            document.getElementById('resConfBar').style.width = res.confidence + '%';
+        }, 100);
+        
+        document.getElementById('resConfText').innerText = `${res.confidence}% (${res.confidence_interpretation})`;
+        document.getElementById('resOhss').innerText = res.ohss;
+        document.getElementById('resMii').innerText = res.mii;
+        
+        // Coloring handling
+        if(res.ohss.toLowerCase() === 'high' || res.ohss.toLowerCase() === 'yes') {
+            document.getElementById('resOhss').style.color = '#dc2626';
+        } else if(res.ohss.toLowerCase() === 'moderate') {
+            document.getElementById('resOhss').style.color = '#f59e0b';
+        } else {
+            document.getElementById('resOhss').style.color = '#16a34a';
+        }
+        
+        const explDiv = document.getElementById('resExplain');
+        explDiv.innerHTML = '';
+        for (const [category, explanation] of Object.entries(res.explanations)) {
+            const wrap = document.createElement('div');
+            wrap.style.marginBottom = '0.75rem';
+            
+            const title = document.createElement('strong');
+            title.style.display = 'block';
+            title.style.textTransform = 'capitalize';
+            title.innerText = category.replace('_', ' ');
+            
+            const desc = document.createElement('span');
+            desc.style.color = '#4b5563';
+            desc.style.fontSize = '0.9rem';
+            desc.innerText = explanation;
+            
+            wrap.appendChild(title);
+            wrap.appendChild(desc);
+            explDiv.appendChild(wrap);
+        }
+        
+        const whyNotDiv = document.getElementById('resWhyNot');
+        whyNotDiv.innerHTML = '';
+        for (const [altTrigger, reasoning] of Object.entries(res.why_not)) {
+            const wrap = document.createElement('div');
+            wrap.style.marginBottom = '0.5rem';
+            wrap.style.paddingLeft = '0.5rem';
+            wrap.style.borderLeft = '3px solid #f59e0b';
+            
+            const title = document.createElement('strong');
+            title.style.fontSize = '0.9rem';
+            title.innerText = altTrigger + ": ";
+            
+            const desc = document.createElement('span');
+            desc.style.fontSize = '0.9rem';
+            desc.style.color = '#4b5563';
+            desc.innerText = reasoning;
+            
+            wrap.appendChild(title);
+            wrap.appendChild(desc);
+            whyNotDiv.appendChild(wrap);
+        }
+        
+    })
+    .catch(err => {
+        btn.innerText = 'Run AI Simulation';
+        btn.disabled = false;
+        document.getElementById('form-error').innerText = 'Network error fetching prediction.';
+        document.getElementById('form-error').style.display = 'block';
+    });
+});
+
+// -- Simulation UI Logic --
+const toggleSimBtn = document.getElementById('toggleSimBtn');
+const simPanel = document.getElementById('simPanel');
+
+toggleSimBtn.addEventListener('click', () => {
+    if(simPanel.style.display === 'none') {
+        simPanel.style.display = 'block';
+        toggleSimBtn.innerText = 'Hide Simulation Panel';
+    } else {
+        simPanel.style.display = 'none';
+        toggleSimBtn.innerText = '🔬 Simulate Next Visit';
+    }
+});
+
+const ohssLevels = { 'low': 1, 'moderate': 2, 'high': 3, 'yes': 3, 'no': 1 };
+
+document.getElementById('runSimBtn').addEventListener('click', () => {
+    const btn = document.getElementById('runSimBtn');
+    btn.innerText = 'Simulating...';
+    btn.disabled = true;
+    document.getElementById('sim-error').style.display = 'none';
+    
+    const data = {
+        patient_id: document.getElementById('patient_id').value,
+        e2: document.getElementById('sim_e2').value,
+        f18: document.getElementById('sim_f18').value
+    };
+    
+    fetch('{{ url_for("simulate") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.innerText = 'Run Simulation';
+        btn.disabled = false;
+        
+        if (!data.success) {
+            document.getElementById('sim-error').innerText = data.error;
+            document.getElementById('sim-error').style.display = 'block';
+            return;
+        }
+        
+        // Show differences!
+        renderDiffResults(data.original, data.simulated);
+    })
+    .catch(err => {
+        btn.innerText = 'Run Simulation';
+        btn.disabled = false;
+        document.getElementById('sim-error').innerText = 'Network Error during Simulation';
+        document.getElementById('sim-error').style.display = 'block';
+    });
+});
+
+function renderDiffResults(orig, sim) {
+    document.getElementById('emptyResults').style.display = 'none';
+    const loaded = document.getElementById('loadedResults');
+    loaded.style.display = 'none';
+    
+    // Smooth transition
+    setTimeout(() => {
+        loaded.style.display = 'block';
+        loaded.style.opacity = '0';
+        setTimeout(() => {
+            loaded.style.transition = 'opacity 0.4s ease-in';
+            loaded.style.opacity = '1';
+        }, 20);
+    }, 50);
+
+    document.getElementById('safetyDisclaimer').style.display = 'block';
+
+    // Trigger Diff
+    let trigHtml = `${sim.trigger}`;
+    if (orig && orig.trigger !== sim.trigger) {
+        trigHtml = `<span style="color:#94a3b8; text-decoration:line-through; font-size:0.9em; margin-right: 0.5rem;">${orig.trigger}</span> ${sim.trigger}`;
+    }
+    document.getElementById('resTrigger').innerHTML = trigHtml;
+    
+    // Confidence (No diff, just current)
+    document.getElementById('resConfBar').style.width = sim.confidence + '%';
+    document.getElementById('resConfText').innerText = `${sim.confidence}% (${sim.confidence_interpretation})`;
+    
+    // OHSS Risk Diff
+    let ohssHtml = `${sim.ohss}`;
+    let ohssColor = '#16a34a'; // default green
+    if(sim.ohss.toLowerCase() === 'high' || sim.ohss.toLowerCase() === 'yes') { ohssColor = '#dc2626'; }
+    else if(sim.ohss.toLowerCase() === 'moderate') { ohssColor = '#f59e0b'; }
+    
+    const ohssEl = document.getElementById('resOhss');
+    ohssEl.style.color = ohssColor;
+    
+    if (orig && orig.ohss !== sim.ohss) {
+        let oLvl = ohssLevels[orig.ohss.toLowerCase()] || 1;
+        let sLvl = ohssLevels[sim.ohss.toLowerCase()] || 1;
+        
+        let arrow = '';
+        if (sLvl > oLvl) arrow = '<span style="color: #dc2626; margin-left: 0.2rem; font-weight: bold;">&uarr;</span>';
+        else if (sLvl < oLvl) arrow = '<span style="color: #16a34a; margin-left: 0.2rem; font-weight: bold;">&darr;</span>';
+        
+        ohssHtml = `<span style="color:#94a3b8; font-size: 0.8em; margin-right: 0.2rem;">${orig.ohss}</span>&rarr; <span style="margin-left: 0.2rem;">${sim.ohss}</span> ${arrow}`;
+        ohssEl.style.color = '#1e293b'; // Base text, let arrow do color
+    }
+    ohssEl.innerHTML = ohssHtml;
+    
+    // MII Diff
+    let miiHtml = `${sim.mii}`;
+    if (orig && orig.mii !== sim.mii) {
+         let arrow = sim.mii > orig.mii ? '<span style="color: #16a34a; margin-left: 0.2rem; font-weight: bold;">&uarr;</span>' : (sim.mii < orig.mii ? '<span style="color: #dc2626; margin-left: 0.2rem; font-weight: bold;">&darr;</span>' : '');
+         miiHtml = `<span style="color:#94a3b8; font-size: 0.8em; margin-right: 0.2rem;">${orig.mii}</span>&rarr; <span style="margin-left: 0.2rem;">${sim.mii}</span> ${arrow}`;
+    }
+    document.getElementById('resMii').innerHTML = miiHtml;
+    
+    // Explanations Diff (Just replace)
+    const explDiv = document.getElementById('resExplain');
+    explDiv.innerHTML = '';
+    for (const [category, explanation] of Object.entries(sim.explanations)) {
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '0.75rem';
+        const title = document.createElement('strong');
+        title.style.display = 'block';
+        title.style.textTransform = 'capitalize';
+        title.innerText = category.replace('_', ' ');
+        const desc = document.createElement('span');
+        desc.style.color = '#4b5563';
+        desc.style.fontSize = '0.9rem';
+        desc.innerText = explanation;
+        wrap.appendChild(title);
+        wrap.appendChild(desc);
+        explDiv.appendChild(wrap);
+    }
+    
+    const whyNotDiv = document.getElementById('resWhyNot');
+    whyNotDiv.innerHTML = '';
+    for (const [altTrigger, reasoning] of Object.entries(sim.why_not)) {
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '0.5rem';
+        wrap.style.paddingLeft = '0.5rem';
+        wrap.style.borderLeft = '3px solid #f59e0b';
+        const title = document.createElement('strong');
+        title.style.fontSize = '0.9rem';
+        title.innerText = altTrigger + ": ";
+        const desc = document.createElement('span');
+        desc.style.fontSize = '0.9rem';
+        desc.style.color = '#4b5563';
+        desc.innerText = reasoning;
+        wrap.appendChild(title);
+        wrap.appendChild(desc);
+        whyNotDiv.appendChild(wrap);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor = rootStyles.getPropertyValue('--primary-color').trim() || '#0284c7';
+    const successColor = rootStyles.getPropertyValue('--success-color').trim() || '#16a34a';
+    const warningColor = '#f59e0b';
+    
+    fetch('{{ url_for("get_cycle_data", patient_id=patient.id) }}')
+        .then(res => res.json())
+        .then(data => {
+            if(!data.success || data.data.dates.length === 0) {
+                document.getElementById('analytics-panel').style.display = 'none';
+                return;
+            }
+            
+            const cData = data.data;
+            
+            // E2 Trend
+            new Chart(document.getElementById('e2Chart'), {
+                type: 'line',
+                data: {
+                    labels: cData.dates,
+                    datasets: [{
+                        label: 'Estradiol (E2)',
+                        data: cData.e2,
+                        borderColor: primaryColor,
+                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Estradiol Trend' } } }
+            });
+            
+            // Follicles
+            new Chart(document.getElementById('follChart'), {
+                type: 'bar',
+                data: {
+                    labels: cData.dates,
+                    datasets: [
+                        { label: 'F12 Count', data: cData.f12, backgroundColor: '#94a3b8' },
+                        { label: 'F18 Count', data: cData.f18, backgroundColor: successColor }
+                    ]
+                },
+                options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { title: { display: true, text: 'Follicle Composition Progression' } } }
+            });
+
+            // MII
+            new Chart(document.getElementById('miiChart'), {
+                type: 'line',
+                data: {
+                    labels: cData.dates,
+                    datasets: [{
+                        label: 'Est. MII',
+                        data: cData.mii,
+                        borderColor: warningColor,
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Predicted MII Yield Across Visits' } } }
+            });
+        });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "doctor_base.html" %}
+{% block title %}Reschedule Appointment{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="display: flex; flex-direction: column; margin-bottom: 2rem;">
+    <div>
+        <a href="{{ url_for('doctor_appointments') }}" class="back-link" style="margin-bottom: 1rem;"><i data-feather="arrow-left" style="width: 16px; height: 16px;"></i> Back to Appointments</a>
+        <h1 style="margin-top: 1rem; margin-bottom: 0.5rem;">Reschedule Appointment</h1>
+        <p>Updating appointment for patient <strong>{{ appt.patient_name }}</strong>. Current slot: <strong>{{ appt.date }} at {{ appt.time }}</strong>.</p>
+    </div>
+</div>
+
+<div style="max-width: 600px; margin: 0 auto;">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Select New Time Slot</h2>
+        </div>
+        <div class="panel-body">
+            <form action="{{ url_for('reschedule_appointment', appt_id=appt.id) }}" method="POST">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>New Date</label>
+                    <input type="date" name="date" class="form-control" required style="width: 100%;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label>New Time Slot</label>
+                    <input type="hidden" name="time" id="selected-time" required>
+                    <div id="time-slots-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                        <p style="color: #6b7280; font-size: 0.9rem;">Please select a new date first to see available slots.</p>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-primary" style="width: 100%; background-color: #f59e0b; border-color: #f59e0b;">Confirm Reschedule</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.querySelector('input[name="date"]');
+    const timeHidden = document.getElementById('selected-time');
+    const slotsContainer = document.getElementById('time-slots-container');
+    const doctorId = {{ session.get('user_id') }};
+    
+    // Set min date to today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.setAttribute('min', today);
+    
+    dateInput.addEventListener('change', function() {
+        const selectedDate = this.value;
+        if (!selectedDate) {
+            slotsContainer.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">Please select a new date first to see available slots.</p>';
+            return;
+        }
+        
+        slotsContainer.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">Loading available slots...</p>';
+        timeHidden.value = '';
+        
+        fetch(`/api/available-slots/${doctorId}/${selectedDate}`)
+            .then(res => res.json())
+            .then(data => {
+                slotsContainer.innerHTML = '';
+                if (!data.success || data.slots.length === 0) {
+                    slotsContainer.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">No slots available for this date. Please choose another.</p>';
+                    return;
+                }
+                
+                data.slots.forEach(slot => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'slot-btn';
+                    
+                    const [h, m] = slot.split(':');
+                    const isPm = parseInt(h) >= 12;
+                    const h12 = parseInt(h) > 12 ? parseInt(h) - 12 : (parseInt(h) === 0 ? 12 : parseInt(h));
+                    btn.textContent = `${h12.toString().padStart(2, '0')}:${m} ${isPm ? 'PM' : 'AM'}`;
+                    
+                    btn.style.padding = '0.5rem 1rem';
+                    btn.style.border = '1px solid #d1d5db';
+                    btn.style.borderRadius = '20px';
+                    btn.style.background = '#fff';
+                    btn.style.cursor = 'pointer';
+                    btn.style.color = '#374151';
+                    btn.style.transition = 'all 0.2s';
+                    
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.slot-btn').forEach(b => {
+                            b.style.background = '#fff';
+                            b.style.color = '#374151';
+                            b.style.borderColor = '#d1d5db';
+                        });
+                        this.style.background = '#f59e0b'; // Amber for reschedule
+                        this.style.color = '#fff';
+                        this.style.borderColor = '#f59e0b';
+                        timeHidden.value = slot;
+                    });
+                    
+                    slotsContainer.appendChild(btn);
+                });
+            })
+            .catch(err => {
+                slotsContainer.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">Error loading slots. Please try again.</p>';
+            });
+    });
+});
+</script>
+{% endblock %}

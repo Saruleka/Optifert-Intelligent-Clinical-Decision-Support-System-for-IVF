@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ role }} Dashboard - OptiFert Clinic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="dashboard-container">
+    <h1>{{ role }} Dashboard</h1>
+    <p>Welcome back, <strong>{{ name }}</strong>.</p>
+    <p style="color: var(--text-muted); margin-top: 1rem;">This is your secure clinic dashboard.</p>
+    
+    <a href="{{ url_for('logout') }}" class="btn-outline">Log Out</a>
+</div>
+
+</body>
+</html>

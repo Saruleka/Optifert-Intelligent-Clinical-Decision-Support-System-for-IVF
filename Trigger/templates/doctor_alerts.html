@@ -1,0 +1,51 @@
+{% extends "doctor_base.html" %}
+{% block title %}Alerts{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>System Alerts</h1>
+    <p>Review ML predictions and system notifications regarding your patients.</p>
+</div>
+
+<div class="panel">
+    <div class="panel-body">
+        {% if alerts %}
+            <ul class="alerts-list">
+            {% for alert in alerts %}
+                <li class="alert-item severity-{{ alert.severity }}" style="margin-bottom: 1rem; padding: 1rem; border-radius: 8px; {% if not alert.is_read %}border-left: 4px solid #3b82f6;{% endif %}">
+                    <div class="alert-icon">
+                        {% if alert.severity == 'high' %}
+                            <i data-feather="x-circle"></i>
+                        {% elif alert.severity == 'medium' %}
+                            <i data-feather="alert-circle"></i>
+                        {% else %}
+                            <i data-feather="info"></i>
+                        {% endif %}
+                    </div>
+                    <div class="alert-content" style="flex: 1;">
+                        <h4 style="margin: 0; display: flex; justify-content: space-between; align-items: center;">
+                            {{ alert.patient_name }}
+                            <span style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">{{ alert.created_at[:16] }}</span>
+                        </h4>
+                        <p style="margin: 0.5rem 0 0 0;">{{ alert.message }}</p>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="badge" style="background-color: {% if alert.severity == 'high' %}#fee2e2; color: #dc2626;{% else %}#f3f4f6; color: #4b5563;{% endif %} font-size: 0.75rem;">
+                                {{ alert.severity|capitalize }} Priority
+                            </span>
+                            {% if not alert.is_read %}
+                                <span class="badge" style="background-color: #dbeafe; color: #2563eb; font-size: 0.75rem; margin-left: 0.5rem;">New</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty-state">
+                <i data-feather="bell" style="width: 48px; height: 48px; color: #9ca3af; margin-bottom: 1rem;"></i>
+                <p>No alerts in the system. You're all caught up!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

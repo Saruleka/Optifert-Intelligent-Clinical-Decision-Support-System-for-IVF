@@ -1,0 +1,67 @@
+{% extends "doctor_base.html" %}
+{% block title %}Patients{% endblock %}
+
+{% block content %}
+<div class="dashboard-header flex-header">
+    <div>
+        <h1>Patient Management</h1>
+        <p>Manage your linked patients and add new ones.</p>
+    </div>
+</div>
+
+<div class="panel add-patient-panel">
+    <div class="panel-header">
+        <h2>Link New Patient</h2>
+    </div>
+    <div class="panel-body">
+        <form action="{{ url_for('doctor_add_patient') }}" method="POST" class="inline-form">
+            <div class="form-group inline">
+                <input type="email" name="email" class="form-control" placeholder="Enter patient's registered email address" required>
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 0; width: auto; padding: 0.875rem 2rem;">Link Patient</button>
+        </form>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>Your Patients</h2>
+    </div>
+    <div class="panel-body no-padding">
+        {% if patients %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Email</th>
+                        <th>Age</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in patients %}
+                    <tr>
+                        <td class="primary-col"><strong>{{ p.name }}</strong></td>
+                        <td>{{ p.email }}</td>
+                        <td>{{ p.age if p.age else 'N/A' }}</td>
+                        <td>{{ p.last_visit if p.last_visit else 'Never' }}</td>
+                        <td>
+                            <a href="{{ url_for('doctor_patient_profile', patient_id=p.user_id) }}" class="btn-action">View Profile</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 3rem;">
+            <i data-feather="users" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 1rem;"></i>
+            <h3>No patients linked yet</h3>
+            <p>Use the form above to link a patient to your account.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

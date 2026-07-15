@@ -1,0 +1,110 @@
+{% extends "doctor_base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Overview</h1>
+    <p>Here is what's happening at your clinic today.</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">
+            <i data-feather="users"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ total_patients }}</h3>
+            <p>Total Patients</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
+            <i data-feather="calendar"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ today_appointments_count }}</h3>
+            <p>Today's Appointments</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+            <i data-feather="alert-triangle"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ high_risk_count }}</h3>
+            <p>High-Risk Alerts</p>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-panels">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Today's Appointments</h2>
+        </div>
+        <div class="panel-body">
+            {% if appointments %}
+                <ul class="appointment-list">
+                {% for appt in appointments %}
+                    <li class="appointment-item">
+                        <div class="appt-time">
+                            {{ appt.time }}
+                        </div>
+                        <div class="appt-details">
+                            <h4>{{ appt.patient_name }}</h4>
+                            <span class="badge status-{{ 'scheduled' if appt.status|lower == 'scheduled' else ('danger' if appt.status|lower == 'cancelled' else 'completed') }}">{{ appt.status|capitalize }}</span>
+                        </div>
+                        <div class="appt-actions" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            {% if appt.status == 'scheduled' %}
+                            <form action="{{ url_for('update_appointment_status', appt_id=appt.id) }}" method="POST" style="display:inline;">
+                                <input type="hidden" name="status" value="completed">
+                                <button type="submit" class="btn-action" style="color: #16a34a; border-color: #16a34a; padding: 0.2rem 0.5rem;" title="Mark Completed"><i data-feather="check" style="width:14px;height:14px;"></i></button>
+                            </form>
+                            <form action="{{ url_for('update_appointment_status', appt_id=appt.id) }}" method="POST" style="display:inline;">
+                                <input type="hidden" name="status" value="cancelled">
+                                <button type="submit" class="btn-action" style="color: #dc2626; border-color: #dc2626; padding: 0.2rem 0.5rem;" title="Cancel"><i data-feather="x" style="width:14px;height:14px;"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">No appointments scheduled for today.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Unread Alerts</h2>
+        </div>
+        <div class="panel-body">
+            {% if alerts %}
+                <ul class="alerts-list">
+                {% for alert in alerts %}
+                    <li class="alert-item severity-{{ alert.severity }}">
+                        <div class="alert-icon">
+                            {% if alert.severity == 'high' %}
+                                <i data-feather="x-circle"></i>
+                            {% elif alert.severity == 'medium' %}
+                                <i data-feather="alert-circle"></i>
+                            {% else %}
+                                <i data-feather="info"></i>
+                            {% endif %}
+                        </div>
+                        <div class="alert-content">
+                            <h4>{{ alert.patient_name }}</h4>
+                            <p>{{ alert.message }}</p>
+                            <span class="alert-time">{{ alert.created_at[11:16] }}</span>
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">No unread alerts. You're all caught up!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

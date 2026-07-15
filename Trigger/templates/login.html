@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - OptiFert Clinic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="auth-container">
+    <div class="auth-info">
+        <div class="auth-info-content">
+            <h2>OptiFert Clinic</h2>
+            <p>The AI-Assisted clinical decision support system designed specifically for modern IVF workflows.</p>
+        </div>
+    </div>
+    <div class="auth-form-wrapper">
+        <div class="auth-form-content">
+            <h3>Welcome Back</h3>
+            <p class="subtitle">Please enter your credentials to access your portal.</p>
+            
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+            </div>
+
+            <form action="{{ url_for('login') }}" method="POST">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="name@example.com" required autocapitalize="none">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-primary">Sign In to Dashboard</button>
+            </form>
+            
+            <div class="auth-links">
+                Don't have an account? <a href="{{ url_for('register') }}">Create an account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

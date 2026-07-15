@@ -1,0 +1,52 @@
+{% extends "doctor_base.html" %}
+{% block title %}Appointments{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>All Appointments</h1>
+    <p>View and manage all patient appointments.</p>
+</div>
+
+<div class="panel">
+    <div class="panel-body">
+        {% if appointments %}
+            <ul class="appointment-list">
+            {% for appt in appointments %}
+                <li class="appointment-item" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <div class="appt-time" style="width: 15%;">
+                        <strong>{{ appt.date }}</strong><br>
+                        {{ appt.time }}
+                    </div>
+                    <div class="appt-details" style="flex: 1;">
+                        <h4>{{ appt.patient_name }}</h4>
+                        <p style="font-size: 0.85rem; color: #6b7280; margin: 0.2rem 0;">{{ appt.patient_email }}</p>
+                        {% if appt.notes %}
+                        <p style="font-size: 0.85rem; color: #4b5563; font-style: italic;">"{{ appt.notes }}"</p>
+                        {% endif %}
+                        <span class="badge status-{{ 'scheduled' if appt.status|lower in ['scheduled', 'rescheduled'] else ('danger' if appt.status|lower == 'cancelled' else 'completed') }}" {% if appt.status|lower == 'rescheduled' %}style="background-color: #fef3c7; color: #d97706;"{% endif %}>{{ appt.status|capitalize }}</span>
+                    </div>
+                    <div class="appt-actions" style="display: flex; gap: 0.5rem; flex-direction: column; justify-content: center;">
+                        {% if appt.status in ['scheduled', 'rescheduled'] %}
+                        <form action="{{ url_for('update_appointment_status', appt_id=appt.id) }}" method="POST">
+                            <input type="hidden" name="status" value="completed">
+                            <button type="submit" class="btn btn-primary" style="background-color: #16a34a; border: none; width: 100%; font-size: 0.8rem; padding: 0.4rem;">Mark Completed</button>
+                        </form>
+                        <a href="{{ url_for('reschedule_appointment', appt_id=appt.id) }}" class="btn" style="background-color: #f59e0b; color: white; border: none; width: 100%; font-size: 0.8rem; padding: 0.4rem; text-align: center; text-decoration: none; border-radius: 4px;">Reschedule</a>
+                        <form action="{{ url_for('update_appointment_status', appt_id=appt.id) }}" method="POST">
+                            <input type="hidden" name="status" value="cancelled">
+                            <button type="submit" class="btn btn-danger" style="background-color: #dc2626; border: none; width: 100%; font-size: 0.8rem; padding: 0.4rem;">Cancel Session</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty-state">
+                <i data-feather="calendar" style="width: 48px; height: 48px; color: #9ca3af; margin-bottom: 1rem;"></i>
+                <p>No appointments scheduled.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

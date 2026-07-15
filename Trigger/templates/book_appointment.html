@@ -1,0 +1,117 @@
+{% extends "patient_base.html" %}
+{% block title %}Book Appointment{% endblock %}
+
+{% block content %}
+<div class="dashboard-header" style="display: flex; flex-direction: column; margin-bottom: 2rem;">
+    <div>
+        <a href="{{ url_for('patient_dashboard') }}" class="back-link" style="margin-bottom: 1rem;"><i data-feather="arrow-left" style="width: 16px; height: 16px;"></i> Back to Dashboard</a>
+        <h1 style="margin-top: 1rem; margin-bottom: 0.5rem;">Schedule a Visit</h1>
+        <p>Book an appointment with <strong>Dr. {{ doctor_name }}</strong></p>
+    </div>
+</div>
+
+<div style="max-width: 600px; margin: 0 auto;">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Appointment Details</h2>
+        </div>
+        <div class="panel-body">
+            <form action="{{ url_for('book_appointment') }}" method="POST">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Date</label>
+                    <input type="date" name="date" class="form-control" required style="width: 100%;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Time Slot</label>
+                    <input type="hidden" name="time" id="selected-time" required>
+                    <div id="time-slots-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                        <p style="color: #6b7280; font-size: 0.9rem;">Please select a date first to see available slots.</p>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label>Reason for Visit / Notes (Optional)</label>
+                    <textarea name="notes" class="form-control" rows="3" style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem;"></textarea>
+                </div>
+                
+                <button type="submit" class="btn-primary" style="width: 100%;">Confirm Appointment</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.querySelector('input[name="date"]');
+    const timeHidden = document.getElementById('selected-time');
+    const slotsContainer = document.getElementById('time-slots-container');
+    const doctorId = {{ doctor_id }};
+    
+    // Set min date to today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.setAttribute('min', today);
+    
+    dateInput.addEventListener('change', function() {
+        const selectedDate = this.value;
+        if (!selectedDate) {
+            slotsContainer.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">Please select a date first to see available slots.</p>';
+            return;
+        }
+        
+        slotsContainer.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">Loading available slots...</p>';
+        timeHidden.value = '';
+        
+        fetch(`/api/available-slots/${doctorId}/${selectedDate}`)
+            .then(res => res.json())
+            .then(data => {
+                slotsContainer.innerHTML = '';
+                if (!data.success || data.slots.length === 0) {
+                    slotsContainer.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">No slots available for this date. Please choose another.</p>';
+                    return;
+                }
+                
+                data.slots.forEach(slot => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'slot-btn';
+                    
+                    // Format time for button label (basic 12h)
+                    const [h, m] = slot.split(':');
+                    const isPm = parseInt(h) >= 12;
+                    const h12 = parseInt(h) > 12 ? parseInt(h) - 12 : (parseInt(h) === 0 ? 12 : parseInt(h));
+                    btn.textContent = `${h12.toString().padStart(2, '0')}:${m} ${isPm ? 'PM' : 'AM'}`;
+                    
+                    // Simple styling
+                    btn.style.padding = '0.5rem 1rem';
+                    btn.style.border = '1px solid #d1d5db';
+                    btn.style.borderRadius = '20px';
+                    btn.style.background = '#fff';
+                    btn.style.cursor = 'pointer';
+                    btn.style.color = '#374151';
+                    btn.style.transition = 'all 0.2s';
+                    
+                    btn.addEventListener('click', function() {
+                        // Deselect others
+                        document.querySelectorAll('.slot-btn').forEach(b => {
+                            b.style.background = '#fff';
+                            b.style.color = '#374151';
+                            b.style.borderColor = '#d1d5db';
+                        });
+                        // Select this
+                        this.style.background = '#0284c7';
+                        this.style.color = '#fff';
+                        this.style.borderColor = '#0284c7';
+                        timeHidden.value = slot;
+                    });
+                    
+                    slotsContainer.appendChild(btn);
+                });
+            })
+            .catch(err => {
+                slotsContainer.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">Error loading slots. Please try again.</p>';
+            });
+    });
+});
+</script>
+{% endblock %}
